@@ -1,0 +1,45 @@
+FROM ghcr.io/nvidia/nemoclaw/sandbox-base:latest
+
+USER root
+ENV HOME=/sandbox
+
+# Install the Discord plugin
+RUN NPM_CONFIG_OFFLINE=false openclaw plugins install npm:@openclaw/discord@2026.6.10
+
+# Bootstrap config, set gateway mode, model
+RUN openclaw doctor --fix 2>/dev/null; \
+    openclaw config set gateway.mode local && \
+    openclaw models set openrouter/anthropic/claude-sonnet-5 && \
+    openclaw config set agents.defaults.memorySearch.enabled false
+
+# Patch in Discord channel config via jq-style node script
+RUN node -e ' \
+  const fs = require("fs"); \
+  const p = "/sandbox/.openclaw/openclaw.json"; \
+  const c = JSON.parse(fs.readFileSync(p, "utf8")); \
+  c.channels = c.channels || {}; \
+  c.channels.discord = { \
+    enabled: true, \
+    accounts: { \
+      default: { \
+        enabled: true, \
+        healthMonitor: { enabled: false } \
+      } \
+    } \
+  }; \
+  c.plugins = c.plugins || {}; \
+  c.plugins.entries = c.plugins.entries || {}; \
+  c.plugins.entries.discord = { enabled: true }; \
+  c.skills = c.skills || {}; \
+  c.skills.entries = c.skills.entries || {}; \
+  c.skills.entries.discord = { enabled: true }; \
+  fs.writeFileSync(p, JSON.stringify(c, null, 2)); \
+'
+
+RUN chown -R sandbox:sandbox /sandbox/.openclaw
+
+USER sandbox
+WORKDIR /sandbox
+
+ENTRYPOINT ["openclaw"]
+CMD ["gateway", "run", "--force"]

@@ -1,17 +1,15 @@
 # Secrets (never commit these)
 secrets.yaml
-k8s/**/secrets.yaml
+**/secrets.yaml
 application_default_credentials.json
 *.key.json
 *.credentials.json
 .env
 
-# Hermes Agent source (use as git submodule or clone separately)
+# Agent source checkouts
 hermes-agent/
 
 # Scratch/working files
-DEPLOYMENT_STEPS.md
-VERTEX_CLAUDE_SETUP.md
 *.tmp
 *.bak
 *~

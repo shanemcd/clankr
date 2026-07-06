@@ -16,7 +16,7 @@ Environment=HOME=/opt/data
 EnvironmentFile=%h/.config/hermes/env
 
 # Volumes
-Volume=hermes-data:/opt/data:Z
+Volume=%h/.hermes:/opt/data:Z
 Volume=%h/.config/gcloud/application_default_credentials.json:/secrets/vertex/application_default_credentials.json:z,ro
 
 # Resource limits
