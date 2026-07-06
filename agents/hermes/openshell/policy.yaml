@@ -1,0 +1,104 @@
+version: 1
+
+filesystem_policy:
+  read_only:
+    - /usr
+    - /lib
+    - /etc
+    - /opt/hermes
+  read_write:
+    - /sandbox
+    - /tmp
+    - /dev/null
+    - /dev/urandom
+
+landlock:
+  compatibility: best_effort
+
+process:
+  run_as_user: sandbox
+  run_as_group: sandbox
+
+network_policies:
+  discord_gateway:
+    name: discord-gateway
+    endpoints:
+      - host: "*.discord.gg"
+        port: 443
+        protocol: websocket
+        enforcement: enforce
+        access: full
+        websocket_credential_rewrite: true
+    binaries:
+      - path: /opt/hermes/.venv/bin/python
+
+  discord_api:
+    name: discord-api
+    endpoints:
+      - host: discord.com
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: full
+      - host: discordapp.com
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: full
+    binaries:
+      - path: /opt/hermes/.venv/bin/python
+
+  discord_cdn:
+    name: discord-cdn
+    endpoints:
+      - host: cdn.discordapp.com
+        port: 443
+        enforcement: log
+        access: full
+      - host: media.discordapp.net
+        port: 443
+        enforcement: log
+        access: full
+    binaries:
+      - path: /opt/hermes/.venv/bin/python
+
+  openrouter:
+    name: openrouter
+    endpoints:
+      - host: openrouter.ai
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: full
+    binaries:
+      - path: /opt/hermes/.venv/bin/python
+
+  nous:
+    name: nous-research
+    endpoints:
+      - host: nousresearch.com
+        port: 443
+        enforcement: log
+        access: full
+      - host: hermes-agent.nousresearch.com
+        port: 443
+        enforcement: log
+        access: full
+    binaries:
+      - path: /opt/hermes/.venv/bin/python
+
+  pypi:
+    name: pypi
+    endpoints:
+      - host: pypi.org
+        port: 443
+        protocol: rest
+        enforcement: log
+        access: full
+      - host: files.pythonhosted.org
+        port: 443
+        enforcement: log
+        access: full
+    binaries:
+      - path: /opt/hermes/.venv/bin/python
+      - path: /usr/local/bin/pip3
