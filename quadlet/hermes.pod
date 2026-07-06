@@ -1,0 +1,11 @@
+[Unit]
+Description=Hermes Agent Pod
+After=network-online.target
+Wants=network-online.target
+
+[Pod]
+# Publish dashboard port
+PublishPort=9119:9119
+
+[Install]
+WantedBy=default.target

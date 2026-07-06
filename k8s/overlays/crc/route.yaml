@@ -1,0 +1,17 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: hermes-dashboard
+  labels:
+    app: hermes-agent
+    component: dashboard
+spec:
+  port:
+    targetPort: http
+  to:
+    kind: Service
+    name: hermes-dashboard
+    weight: 100
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

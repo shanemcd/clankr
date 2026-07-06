@@ -1,0 +1,27 @@
+# Secrets (never commit these)
+secrets.yaml
+k8s/**/secrets.yaml
+application_default_credentials.json
+*.key.json
+*.credentials.json
+.env
+
+# Hermes Agent source (use as git submodule or clone separately)
+hermes-agent/
+
+# Scratch/working files
+DEPLOYMENT_STEPS.md
+VERTEX_CLAUDE_SETUP.md
+*.tmp
+*.bak
+*~
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

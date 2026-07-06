@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hermes-config
+  labels:
+    app: hermes-agent
+data:
+  config.yaml: |
+    model:
+      default: claude-opus-4-6
+      provider: vertex
+    vertex:
+      project_id: ""  # Set via ANTHROPIC_VERTEX_PROJECT_ID or GOOGLE_CLOUD_PROJECT env var
+      region: global

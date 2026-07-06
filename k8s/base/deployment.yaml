@@ -1,0 +1,169 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hermes-gateway
+  labels:
+    app: hermes-agent
+    component: gateway
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: hermes-agent
+      component: gateway
+  template:
+    metadata:
+      labels:
+        app: hermes-agent
+        component: gateway
+    spec:
+      initContainers:
+      - name: seed-config
+        image: docker.io/nousresearch/hermes-agent:latest
+        command: ["sh", "-c"]
+        args:
+        - |
+          if [ ! -f /opt/data/config.yaml ]; then
+            cp /init-config/config.yaml /opt/data/config.yaml
+            echo "seeded config.yaml"
+          fi
+          cp /init-config/.env /opt/data/.env
+          echo "seeded .env"
+        envFrom:
+        - secretRef:
+            name: hermes-env
+            optional: true
+        volumeMounts:
+        - name: hermes-data
+          mountPath: /opt/data
+        - name: init-config
+          mountPath: /init-config/config.yaml
+          subPath: config.yaml
+          readOnly: true
+        - name: dotenv
+          mountPath: /init-config/.env
+          subPath: .env
+          readOnly: true
+      containers:
+      - name: hermes
+        image: docker.io/nousresearch/hermes-agent:latest
+        command: ["hermes", "gateway", "run"]
+        env:
+        - name: HOME
+          value: "/opt/data"
+        envFrom:
+        - secretRef:
+            name: hermes-env
+            optional: true
+        volumeMounts:
+        - name: hermes-data
+          mountPath: /opt/data
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+      volumes:
+      - name: hermes-data
+        persistentVolumeClaim:
+          claimName: hermes-data
+      - name: init-config
+        configMap:
+          name: hermes-config
+      - name: dotenv
+        secret:
+          secretName: hermes-env
+          items:
+          - key: .env
+            path: .env
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hermes-dashboard
+  labels:
+    app: hermes-agent
+    component: dashboard
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: hermes-agent
+      component: dashboard
+  template:
+    metadata:
+      labels:
+        app: hermes-agent
+        component: dashboard
+    spec:
+      initContainers:
+      - name: seed-config
+        image: docker.io/nousresearch/hermes-agent:latest
+        command: ["sh", "-c"]
+        args:
+        - |
+          if [ ! -f /opt/data/config.yaml ]; then
+            cp /init-config/config.yaml /opt/data/config.yaml
+            echo "seeded config.yaml"
+          fi
+          cp /init-config/.env /opt/data/.env
+          echo "seeded .env"
+        envFrom:
+        - secretRef:
+            name: hermes-env
+            optional: true
+        volumeMounts:
+        - name: hermes-data
+          mountPath: /opt/data
+        - name: init-config
+          mountPath: /init-config/config.yaml
+          subPath: config.yaml
+          readOnly: true
+        - name: dotenv
+          mountPath: /init-config/.env
+          subPath: .env
+          readOnly: true
+      containers:
+      - name: dashboard
+        image: docker.io/nousresearch/hermes-agent:latest
+        command: ["hermes", "dashboard", "--host", "0.0.0.0", "--no-open"]
+        env:
+        - name: HOME
+          value: "/opt/data"
+        envFrom:
+        - secretRef:
+            name: hermes-env
+            optional: true
+        ports:
+        - name: http
+          containerPort: 9119
+          protocol: TCP
+        volumeMounts:
+        - name: hermes-data
+          mountPath: /opt/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+      volumes:
+      - name: hermes-data
+        persistentVolumeClaim:
+          claimName: hermes-data
+      - name: init-config
+        configMap:
+          name: hermes-config
+      - name: dotenv
+        secret:
+          secretName: hermes-env
+          items:
+          - key: .env
+            path: .env
