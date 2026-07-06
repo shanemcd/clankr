@@ -22,7 +22,7 @@ network_policies:
   discord_gateway:
     name: discord-gateway
     endpoints:
-      - host: gateway.discord.gg
+      - host: "*.discord.gg"
         port: 443
         protocol: websocket
         enforcement: enforce
