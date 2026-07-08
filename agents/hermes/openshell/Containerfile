@@ -1,29 +1,12 @@
 FROM localhost/nemoclaw-hermes:latest
 
 USER root
-ENV HOME=/sandbox
 
-# Configure Hermes for OpenRouter + Discord.
-# api_key is cleared so the OpenAI SDK falls back to OPENAI_API_KEY env var,
-# which OpenShell injects as a credential placeholder.
-RUN mkdir -p /sandbox/.hermes && \
-    hermes config set model.default anthropic/claude-sonnet-5 && \
-    hermes config set model.provider custom && \
-    hermes config set model.base_url https://openrouter.ai/api/v1 && \
-    hermes config set providers.custom.api https://openrouter.ai/api/v1 && \
-    hermes config set providers.custom.default_model anthropic/claude-sonnet-5 && \
-    hermes config set platforms.discord.enabled true && \
-    hermes config set discord.require_mention 1 && \
-    hermes config set discord.auto_thread true && \
-    hermes config set discord.reactions true
-
-# Remove api_key fields so the OpenAI SDK falls back to OPENAI_API_KEY env var
-RUN sed -i '/api_key:/d' /sandbox/.hermes/config.yaml
-
-RUN printf 'DISCORD_ALLOWED_USERS=511633652111769600\nDISCORD_ALLOW_ALL_USERS=false\n' \
-    > /sandbox/.hermes/.env
-
-RUN chown -R sandbox:sandbox /sandbox/.hermes
+# Add Discord user allowlist to .env and update the config hash
+RUN echo 'DISCORD_ALLOWED_USERS=511633652111769600' >> /sandbox/.hermes/.env && \
+    chown sandbox:sandbox /sandbox/.hermes/.env && \
+    NEW_ENV_HASH=$(sha256sum /sandbox/.hermes/.env) && \
+    sed -i "2s|.*|${NEW_ENV_HASH}|" /etc/nemoclaw/hermes.config-hash && \
+    sed -i "2s|.*|${NEW_ENV_HASH}|" /sandbox/.hermes/.config-hash
 
 USER sandbox
-WORKDIR /sandbox

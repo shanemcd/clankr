@@ -73,6 +73,43 @@ network_policies:
     binaries:
       - path: /opt/hermes/.venv/bin/python
 
+  duckduckgo:
+    name: duckduckgo
+    endpoints:
+      - host: duckduckgo.com
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: full
+      - host: "*.duckduckgo.com"
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: full
+      - host: links.duckduckgo.com
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: full
+    binaries:
+      - path: /opt/hermes/.venv/bin/python
+
+  github:
+    name: github
+    endpoints:
+      - host: api.github.com
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: full
+      - host: github.com
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: full
+    binaries:
+      - path: /opt/hermes/.venv/bin/python
+
   nous:
     name: nous-research
     endpoints:
