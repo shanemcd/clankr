@@ -4,12 +4,13 @@ ARG GITLAB_HOST=
 
 USER root
 
-# Install DuckDuckGo search, GitHub CLI, and GitLab CLI
+# Install DuckDuckGo search, GitHub CLI, GitLab CLI, and Google Workspace CLI
 RUN uv pip install --python /opt/hermes/.venv/bin/python3 ddgs && \
     curl -sL https://github.com/cli/cli/releases/download/v2.96.0/gh_2.96.0_linux_amd64.tar.gz | \
     tar xz -C /usr/local --strip-components=1 && \
     curl -sL https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/packages/generic/glab/1.107.0/glab_1.107.0_linux_amd64.tar.gz | \
-    tar xz -C /usr/local/bin bin/glab --strip-components=1
+    tar xz -C /usr/local/bin bin/glab --strip-components=1 && \
+    npm install -g @googleworkspace/cli
 
 # Extra CA certs for TLS interception proxy (e.g. internal GitLab)
 # Create extra-ca-certs.pem from your internal CA chain, or use an empty file.
@@ -29,6 +30,11 @@ RUN chmod 755 /usr/local/bin/git-credential-openshell && \
       git config --system "credential.https://${GITLAB_HOST}.helper" 'openshell GITLAB_TOKEN'; \
     fi
 
+# Google Workspace CLI (credentials use OpenShell placeholders, resolved at egress)
+COPY gws-credentials.json /sandbox/.config/gws/credentials.json
+RUN chown -R sandbox:sandbox /sandbox/.config/gws && \
+    chmod 600 /sandbox/.config/gws/credentials.json
+
 # Agent identity
 COPY SOUL.md /sandbox/.hermes/SOUL.md
 
@@ -38,14 +44,9 @@ RUN cat /tmp/hermes.env >> /sandbox/.hermes/.env && \
     rm /tmp/hermes.env && \
     chown sandbox:sandbox /sandbox/.hermes/.env /sandbox/.hermes/SOUL.md
 
-# Hermes settings (baked into config.yaml so no post-startup SSH needed)
-ENV PATH="/opt/hermes/.venv/bin:$PATH" HOME=/sandbox
-RUN hermes config set model.default claude-opus-4-6 && \
-    hermes config set model.provider anthropic && \
-    hermes config set platforms.discord.enabled true && \
-    hermes config set web.backend ddgs && \
-    NEW_HASH=$(sha256sum /sandbox/.hermes/.env /sandbox/.hermes/config.yaml | sha256sum) && \
-    sed -i "2s|.*|${NEW_HASH}|" /etc/nemoclaw/hermes.config-hash && \
-    sed -i "2s|.*|${NEW_HASH}|" /sandbox/.hermes/.config-hash
+# Update config hash to reflect .env changes
+RUN NEW_ENV_HASH=$(sha256sum /sandbox/.hermes/.env) && \
+    sed -i "2s|.*|${NEW_ENV_HASH}|" /etc/nemoclaw/hermes.config-hash && \
+    sed -i "2s|.*|${NEW_ENV_HASH}|" /sandbox/.hermes/.config-hash
 
 USER sandbox

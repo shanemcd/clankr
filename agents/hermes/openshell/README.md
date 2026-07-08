@@ -42,6 +42,19 @@ openshell provider create --name hermes-dashboard --type generic \
 # GitLab (optional, for internal instances)
 openshell provider create --name gitlab --type generic \
   --credential "GITLAB_TOKEN=your-gitlab-pat"
+
+# Google Workspace (optional, read-only Gmail/Calendar)
+# First authenticate: gws auth login --readonly -s gmail,calendar
+# Then store the credentials (decrypt if needed):
+openshell provider create --name gws --type generic \
+  --credential "GWS_CLIENT_ID=your-client-id" \
+  --credential "GWS_CLIENT_SECRET=your-client-secret" \
+  --credential "GWS_REFRESH_TOKEN=your-refresh-token"
+
+# Atlassian (optional, Jira/Confluence via MCP)
+# Use an OAuth access token from an existing Atlassian MCP auth flow.
+openshell provider create --name atlassian --type generic \
+  --credential "ATLASSIAN_ACCESS_TOKEN=your-oauth-access-token"
 ```
 
 ## 2. Prepare Site-Specific Files
@@ -80,7 +93,7 @@ podman build --build-arg GITLAB_HOST=gitlab.internal.example \
 
 ## 4. Create and Launch the Sandbox
 
-Hermes settings (model, provider, Discord, web backend) are baked into the image at build time, so no post-startup configuration is needed.
+The sandbox create command backgrounds the entrypoint and waits for SSH to become available before configuring Hermes.
 
 ```bash
 SANDBOX_NAME=hermes
@@ -93,10 +106,26 @@ openshell sandbox create \
   --provider discord \
   --provider hermes-dashboard \
   --provider github \
+  --provider gws \
+  --provider atlassian \
   --policy "$POLICY" \
   --no-tty \
-  -- /usr/local/bin/nemoclaw-start
+  -- /usr/local/bin/nemoclaw-start &
+
+# Wait for SSH to be reachable
+SSH_CMD=(ssh -o "ProxyCommand=openshell ssh-proxy --gateway-name tot --name $SANDBOX_NAME"
+  -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR
+  sandbox@openshell-hermes)
+until "${SSH_CMD[@]}" 'true' 2>/dev/null; do sleep 5; done
+
+# Configure Hermes (NemoClaw's hash check prevents baking this into the image)
+"${SSH_CMD[@]}" 'hermes config set model.default claude-opus-4-6 && \
+  hermes config set model.provider anthropic && \
+  hermes config set platforms.discord.enabled true && \
+  hermes config set web.backend ddgs'
 ```
+
+Add `--provider gitlab` or other providers as needed. Only providers listed at creation time have their credentials available for proxy rewriting.
 
 ## 5. Access the Dashboard
 
@@ -138,20 +167,33 @@ openshell sandbox delete hermes
 
 ## MCP Servers
 
-MCP servers can be added to Hermes inside the sandbox. For remote MCP servers that require authentication, store credentials as OpenShell provider credentials and reference them with `openshell:resolve:env:KEY` placeholders in the headers.
+Remote MCP servers can be added to Hermes inside the sandbox. Store credentials as OpenShell provider credentials, include the provider at sandbox creation time, and reference them with `openshell:resolve:env:KEY` placeholders in the MCP headers.
 
 ```bash
-# Example: add a remote MCP server with Bearer auth
+# 1. Create a provider with the MCP credential
 openshell provider create --name my-mcp --type generic \
   --credential "MCP_ACCESS_TOKEN=your-token"
-openshell sandbox provider attach hermes my-mcp
 
-# Then configure in Hermes (via SSH or dashboard):
-# URL: https://mcp.example.com/v1/mcp
-# Header: Authorization=Bearer openshell:resolve:env:MCP_ACCESS_TOKEN
+# 2. Include --provider my-mcp in your sandbox create command
+
+# 3. Add the MCP host to policy.yaml with protocol: rest
+#    (enables TLS interception and credential rewriting)
+
+# 4. Configure in Hermes via SSH or the dashboard config.yaml:
 ```
 
-Add the MCP server's hostname to your `policy.yaml` network policies with `protocol: rest` to enable TLS interception and credential rewriting.
+```yaml
+# In /sandbox/.hermes/config.yaml
+mcp_servers:
+  MyMCP:
+    url: https://mcp.example.com/v1/mcp
+    headers:
+      Authorization: "Bearer openshell:resolve:env:MCP_ACCESS_TOKEN"
+```
+
+The `headers:` key (not `env:`) is required for remote HTTP MCP servers. The proxy rewrites the placeholder in the Authorization header at egress.
+
+Providers must be included at sandbox creation time (`--provider` flag), not just attached afterward, for their credentials to be resolvable by the proxy.
 
 ## Credential Flow
 
@@ -160,6 +202,7 @@ No real credentials exist inside the sandbox. All secrets use OpenShell resolver
 - Inference API keys (Vertex AI, via gateway-managed token refresh)
 - Git credentials (via `git-credential-openshell` helper)
 - GitLab CLI tokens (via `glab-config.yml`)
+- Google Workspace CLI (via `gws-credentials.json` with `request_body_credential_rewrite` for token refresh)
 - MCP server auth headers
 - Discord bot tokens
 - GitHub PATs
@@ -174,6 +217,7 @@ No real credentials exist inside the sandbox. All secrets use OpenShell resolver
 | `git-credential-openshell` | Yes | Generic git credential helper for OpenShell |
 | `policy.yaml.example` | Yes | Network policy template |
 | `glab-config.yml.example` | Yes | GitLab CLI config template |
+| `gws-credentials.json` | Yes | GWS OAuth placeholder credentials |
 | `policy.yaml` | No (gitignored) | Site-specific network policy |
 | `glab-config.yml` | No (gitignored) | Site-specific GitLab config |
 | `extra-ca-certs.pem` | No (gitignored) | Internal CA certificates |
