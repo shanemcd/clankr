@@ -1,21 +1,42 @@
 FROM localhost/nemoclaw-hermes:latest
 
+ARG GITLAB_HOST=
+
 USER root
 
-# Install DuckDuckGo search backend and GitHub CLI
+# Install DuckDuckGo search, GitHub CLI, and GitLab CLI
 RUN uv pip install --python /opt/hermes/.venv/bin/python3 ddgs && \
     curl -sL https://github.com/cli/cli/releases/download/v2.96.0/gh_2.96.0_linux_amd64.tar.gz | \
-    tar xz -C /usr/local --strip-components=1
+    tar xz -C /usr/local --strip-components=1 && \
+    curl -sL https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/packages/generic/glab/1.107.0/glab_1.107.0_linux_amd64.tar.gz | \
+    tar xz -C /usr/local/bin bin/glab --strip-components=1
 
-# Set agent identity so Hermes understands its runtime environment
+# Extra CA certs for TLS interception proxy (e.g. internal GitLab)
+# Create extra-ca-certs.pem from your internal CA chain, or use an empty file.
+COPY extra-ca-certs.pem /tmp/extra-ca-certs.pem
+RUN cat /tmp/extra-ca-certs.pem >> /etc/ssl/certs/ca-certificates.crt && \
+    rm /tmp/extra-ca-certs.pem
+
+# Git credential helpers (OpenShell proxy resolves placeholders at egress)
+# Create glab-config.yml from glab-config.yml.example with your GitLab host.
+COPY git-credential-openshell /usr/local/bin/git-credential-openshell
+COPY glab-config.yml /sandbox/.config/glab-cli/config.yml
+RUN chmod 755 /usr/local/bin/git-credential-openshell && \
+    chown -R sandbox:sandbox /sandbox/.config/glab-cli && \
+    chmod 600 /sandbox/.config/glab-cli/config.yml && \
+    git config --system credential.https://github.com.helper 'openshell GITHUB_TOKEN' && \
+    if [ -n "$GITLAB_HOST" ]; then \
+      git config --system "credential.https://${GITLAB_HOST}.helper" 'openshell GITLAB_TOKEN'; \
+    fi
+
+# Agent identity
 COPY SOUL.md /sandbox/.hermes/SOUL.md
-RUN chown sandbox:sandbox /sandbox/.hermes/SOUL.md
 
-# Append runtime config to .env and update config hash
+# Runtime config
 COPY hermes.env /tmp/hermes.env
 RUN cat /tmp/hermes.env >> /sandbox/.hermes/.env && \
     rm /tmp/hermes.env && \
-    chown sandbox:sandbox /sandbox/.hermes/.env && \
+    chown sandbox:sandbox /sandbox/.hermes/.env /sandbox/.hermes/SOUL.md && \
     NEW_ENV_HASH=$(sha256sum /sandbox/.hermes/.env) && \
     sed -i "2s|.*|${NEW_ENV_HASH}|" /etc/nemoclaw/hermes.config-hash && \
     sed -i "2s|.*|${NEW_ENV_HASH}|" /sandbox/.hermes/.config-hash

@@ -8,6 +8,7 @@ filesystem_policy:
     - /opt/hermes
   read_write:
     - /sandbox
+    - /opt/data
     - /tmp
     - /dev/null
     - /dev/urandom
@@ -110,7 +111,30 @@ network_policies:
     binaries:
       - path: /opt/hermes/.venv/bin/python
       - path: /usr/bin/curl
-      - path: /usr/bin/gh
+      - path: /usr/local/bin/gh
+
+  # Add your internal GitLab instance here. Use protocol: rest to enable
+  # TLS interception and credential rewriting. Requires baking the internal
+  # CA into the sandbox image (see Containerfile and extra-ca-certs.pem).
+  #
+  # gitlab_internal:
+  #   name: gitlab-internal
+  #   endpoints:
+  #     - host: gitlab.internal.example
+  #       port: 22
+  #       enforcement: enforce
+  #       access: full
+  #     - host: gitlab.internal.example
+  #       port: 443
+  #       protocol: rest
+  #       enforcement: enforce
+  #       access: full
+  #   binaries:
+  #     - path: /opt/hermes/.venv/bin/python
+  #     - path: /usr/bin/git
+  #     - path: /usr/bin/ssh
+  #     - path: /usr/bin/curl
+  #     - path: /usr/local/bin/glab
 
   nous:
     name: nous-research
