@@ -2,8 +2,14 @@ FROM localhost/nemoclaw-hermes:latest
 
 USER root
 
-# Install DuckDuckGo search backend
-RUN uv pip install --python /opt/hermes/.venv/bin/python3 ddgs
+# Install DuckDuckGo search backend and GitHub CLI
+RUN uv pip install --python /opt/hermes/.venv/bin/python3 ddgs && \
+    curl -sL https://github.com/cli/cli/releases/download/v2.96.0/gh_2.96.0_linux_amd64.tar.gz | \
+    tar xz -C /usr/local --strip-components=1
+
+# Set agent identity so Hermes understands its runtime environment
+COPY SOUL.md /sandbox/.hermes/SOUL.md
+RUN chown sandbox:sandbox /sandbox/.hermes/SOUL.md
 
 # Append runtime config to .env and update config hash
 COPY hermes.env /tmp/hermes.env
