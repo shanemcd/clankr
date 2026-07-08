@@ -6,10 +6,15 @@ Hermes Agent doesn't natively support Claude models on Vertex AI. This setup use
 
 ## Deployment Options
 
+- **OpenShell sandbox** via NemoClaw (`openshell/`)
 - **Kubernetes/OpenShift** via Kustomize (`k8s/`)
 - **Local Podman** via Quadlet (`quadlet/`)
 
-Both use the custom image at `quay.io/shanemcd/hermes-agent:vertex-55742`.
+The Quadlet and Kubernetes deployments use the custom image at `quay.io/shanemcd/hermes-agent:vertex-55742`.
+
+## OpenShell Sandbox (NemoClaw)
+
+See [`openshell/README.md`](openshell/README.md). Runs Hermes inside an NVIDIA OpenShell sandbox with network policy enforcement, credential injection, and Landlock restrictions. No real credentials exist inside the sandbox.
 
 ## Kubernetes/OpenShift
 
@@ -38,28 +43,7 @@ The base config in `k8s/base/configmap.yaml` seeds `config.yaml` on first boot. 
 
 ## Local Podman (Quadlet)
 
-```bash
-# Set up environment
-mkdir -p ~/.config/hermes
-cp quadlet/env.example ~/.config/hermes/env
-# Edit ~/.config/hermes/env with your credentials
-
-# Ensure GCP credentials are readable
-chmod 644 ~/.config/gcloud/application_default_credentials.json
-
-# Create volume and install units
-podman volume create hermes-data
-mkdir -p ~/.config/containers/systemd
-cp quadlet/hermes*.{pod,container} ~/.config/containers/systemd/
-systemctl --user daemon-reload
-
-# Start
-systemctl --user start hermes-gateway-pod hermes-dashboard-pod
-
-# Test
-podman exec hermes-gateway hermes chat -q "Hello"
-# Dashboard: http://localhost:9119
-```
+See [`quadlet/README.md`](quadlet/README.md). Runs Hermes as a Podman pod with gateway and dashboard containers managed by systemd Quadlet units.
 
 ## Vertex AI Integration
 
