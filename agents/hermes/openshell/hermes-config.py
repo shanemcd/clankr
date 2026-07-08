@@ -16,6 +16,7 @@ SETTINGS = {
     },
     "platforms": {
         "discord": {"enabled": True},
+        "signal": {"enabled": True},
     },
     "web": {
         "backend": "ddgs",
