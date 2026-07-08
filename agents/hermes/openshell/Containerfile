@@ -36,9 +36,16 @@ COPY SOUL.md /sandbox/.hermes/SOUL.md
 COPY hermes.env /tmp/hermes.env
 RUN cat /tmp/hermes.env >> /sandbox/.hermes/.env && \
     rm /tmp/hermes.env && \
-    chown sandbox:sandbox /sandbox/.hermes/.env /sandbox/.hermes/SOUL.md && \
-    NEW_ENV_HASH=$(sha256sum /sandbox/.hermes/.env) && \
-    sed -i "2s|.*|${NEW_ENV_HASH}|" /etc/nemoclaw/hermes.config-hash && \
-    sed -i "2s|.*|${NEW_ENV_HASH}|" /sandbox/.hermes/.config-hash
+    chown sandbox:sandbox /sandbox/.hermes/.env /sandbox/.hermes/SOUL.md
+
+# Hermes settings (baked into config.yaml so no post-startup SSH needed)
+ENV PATH="/opt/hermes/.venv/bin:$PATH" HOME=/sandbox
+RUN hermes config set model.default claude-opus-4-6 && \
+    hermes config set model.provider anthropic && \
+    hermes config set platforms.discord.enabled true && \
+    hermes config set web.backend ddgs && \
+    NEW_HASH=$(sha256sum /sandbox/.hermes/.env /sandbox/.hermes/config.yaml | sha256sum) && \
+    sed -i "2s|.*|${NEW_HASH}|" /etc/nemoclaw/hermes.config-hash && \
+    sed -i "2s|.*|${NEW_HASH}|" /sandbox/.hermes/.config-hash
 
 USER sandbox
