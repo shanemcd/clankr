@@ -4,8 +4,9 @@ ARG GITLAB_HOST=
 
 USER root
 
-# Install DuckDuckGo search, GitHub CLI, GitLab CLI, and Google Workspace CLI
-RUN uv pip install --python /opt/hermes/.venv/bin/python3 ddgs && \
+# Install DuckDuckGo search, GitHub CLI, GitLab CLI, Google Workspace CLI, and jirahhh
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends pandoc && rm -rf /var/lib/apt/lists/* && \
+    uv pip install --python /opt/hermes/.venv/bin/python3 ddgs "jirahhh @ git+https://github.com/shanemcd/jirahhh.git" && \
     curl -sL https://github.com/cli/cli/releases/download/v2.96.0/gh_2.96.0_linux_amd64.tar.gz | \
     tar xz -C /usr/local --strip-components=1 && \
     curl -sL https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/packages/generic/glab/1.107.0/glab_1.107.0_linux_amd64.tar.gz | \
@@ -35,6 +36,11 @@ COPY gws-credentials.json /sandbox/.config/gws/credentials.json
 RUN chown -R sandbox:sandbox /sandbox/.config/gws && \
     chmod 600 /sandbox/.config/gws/credentials.json
 
+# Jirahhh config (placeholders resolved by proxy in Basic auth headers)
+COPY jirahhh-config.yaml /sandbox/.config/jirahhh/config.yaml
+RUN chown -R sandbox:sandbox /sandbox/.config/jirahhh && \
+    chmod 600 /sandbox/.config/jirahhh/config.yaml
+
 # Agent identity
 COPY SOUL.md /sandbox/.hermes/SOUL.md
 
@@ -44,9 +50,13 @@ RUN cat /tmp/hermes.env >> /sandbox/.hermes/.env && \
     rm /tmp/hermes.env && \
     chown sandbox:sandbox /sandbox/.hermes/.env /sandbox/.hermes/SOUL.md
 
-# Update config hash to reflect .env changes
-RUN NEW_ENV_HASH=$(sha256sum /sandbox/.hermes/.env) && \
-    sed -i "2s|.*|${NEW_ENV_HASH}|" /etc/nemoclaw/hermes.config-hash && \
-    sed -i "2s|.*|${NEW_ENV_HASH}|" /sandbox/.hermes/.config-hash
+# Hermes settings and MCP servers (baked at build time)
+COPY hermes-config.py /tmp/hermes-config.py
+COPY update-config-hashes.py /tmp/update-config-hashes.py
+ENV PATH="/opt/hermes/.venv/bin:$PATH" HOME=/sandbox
+RUN python3 /tmp/hermes-config.py && \
+    chown sandbox:sandbox /sandbox/.hermes/config.yaml && \
+    python3 /tmp/update-config-hashes.py && \
+    rm /tmp/hermes-config.py /tmp/update-config-hashes.py
 
 USER sandbox

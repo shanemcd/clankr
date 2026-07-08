@@ -12,6 +12,7 @@ filesystem_policy:
     - /tmp
     - /dev/null
     - /dev/urandom
+    - /dev/pts
 
 landlock:
   compatibility: best_effort

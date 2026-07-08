@@ -1,4 +1,5 @@
 # Site-specific files (copy from .example templates)
 policy.yaml
 glab-config.yml
+jirahhh-config.yaml
 extra-ca-certs.pem
