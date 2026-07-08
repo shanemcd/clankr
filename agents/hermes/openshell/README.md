@@ -80,6 +80,8 @@ podman build --build-arg GITLAB_HOST=gitlab.internal.example \
 
 ## 4. Create and Launch the Sandbox
 
+Hermes settings (model, provider, Discord, web backend) are baked into the image at build time, so no post-startup configuration is needed.
+
 ```bash
 SANDBOX_NAME=hermes
 POLICY="$HOME/github/shanemcd/clankr/agents/hermes/openshell/policy.yaml"
@@ -93,21 +95,7 @@ openshell sandbox create \
   --provider github \
   --policy "$POLICY" \
   --no-tty \
-  -- /usr/local/bin/nemoclaw-start &
-
-# Wait for startup (~55s)
-sleep 55
-
-# Configure Hermes via SSH
-SSH_CMD=(ssh
-  -o "ProxyCommand=openshell ssh-proxy --gateway-name tot --name $SANDBOX_NAME"
-  -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR
-  sandbox@openshell-hermes)
-
-"${SSH_CMD[@]}" 'hermes config set model.default claude-opus-4-6 && \
-  hermes config set model.provider anthropic && \
-  hermes config set platforms.discord.enabled true && \
-  hermes config set web.backend ddgs'
+  -- /usr/local/bin/nemoclaw-start
 ```
 
 ## 5. Access the Dashboard
