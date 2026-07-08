@@ -109,6 +109,8 @@ network_policies:
         access: full
     binaries:
       - path: /opt/hermes/.venv/bin/python
+      - path: /usr/bin/curl
+      - path: /usr/bin/gh
 
   nous:
     name: nous-research

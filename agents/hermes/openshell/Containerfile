@@ -2,8 +2,13 @@ FROM localhost/nemoclaw-hermes:latest
 
 USER root
 
-# Add Discord user allowlist to .env and update the config hash
-RUN echo 'DISCORD_ALLOWED_USERS=511633652111769600' >> /sandbox/.hermes/.env && \
+# Install DuckDuckGo search backend
+RUN uv pip install --python /opt/hermes/.venv/bin/python3 ddgs
+
+# Append runtime config to .env and update config hash
+COPY hermes.env /tmp/hermes.env
+RUN cat /tmp/hermes.env >> /sandbox/.hermes/.env && \
+    rm /tmp/hermes.env && \
     chown sandbox:sandbox /sandbox/.hermes/.env && \
     NEW_ENV_HASH=$(sha256sum /sandbox/.hermes/.env) && \
     sed -i "2s|.*|${NEW_ENV_HASH}|" /etc/nemoclaw/hermes.config-hash && \
