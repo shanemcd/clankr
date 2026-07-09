@@ -4,3 +4,4 @@ policy.yaml
 glab-config.yml
 jirahhh-config.yaml
 extra-ca-certs.pem
+kubeconfig

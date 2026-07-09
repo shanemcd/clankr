@@ -8,13 +8,21 @@ ARG SIGNAL_ALLOWED_USERS=
 USER root
 
 # Install DuckDuckGo search, GitHub CLI, GitLab CLI, Google Workspace CLI, and jirahhh
-RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends pandoc && rm -rf /var/lib/apt/lists/* && \
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends \
+      pandoc build-essential pkg-config libssl-dev protobuf-compiler \
+      libclang-dev clang libz3-dev cmake && \
+    rm -rf /var/lib/apt/lists/* && \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+      CARGO_HOME=/opt/rust/cargo RUSTUP_HOME=/opt/rust/rustup sh -s -- -y --default-toolchain stable && \
+    chmod -R a+rX /opt/rust && \
     uv pip install --python /opt/hermes/.venv/bin/python3 ddgs "jirahhh @ git+https://github.com/shanemcd/jirahhh.git" && \
     curl -sL https://github.com/cli/cli/releases/download/v2.96.0/gh_2.96.0_linux_amd64.tar.gz | \
     tar xz -C /usr/local --strip-components=1 && \
     curl -sL https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/packages/generic/glab/1.107.0/glab_1.107.0_linux_amd64.tar.gz | \
     tar xz -C /usr/local/bin bin/glab --strip-components=1 && \
-    npm install -g @googleworkspace/cli
+    npm install -g @googleworkspace/cli && \
+    curl -sL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux-amd64-rhel8.tar.gz | \
+    tar xz -C /usr/local/bin oc kubectl
 
 # Extra CA certs for TLS interception proxy (e.g. internal GitLab)
 # Create extra-ca-certs.pem from your internal CA chain, or use an empty file.
@@ -44,6 +52,11 @@ COPY jirahhh-config.yaml /sandbox/.config/jirahhh/config.yaml
 RUN chown -R sandbox:sandbox /sandbox/.config/jirahhh && \
     chmod 600 /sandbox/.config/jirahhh/config.yaml
 
+# Kubernetes/OpenShift config (token is an OpenShell placeholder, resolved at egress)
+COPY kubeconfig /sandbox/.kube/config
+RUN chown -R sandbox:sandbox /sandbox/.kube && \
+    chmod 600 /sandbox/.kube/config
+
 # Agent identity
 COPY SOUL.md /sandbox/.hermes/SOUL.md
 
@@ -56,7 +69,8 @@ RUN cat /tmp/hermes.env >> /sandbox/.hermes/.env && \
 # Hermes settings and MCP servers (baked at build time)
 COPY hermes-config.py /tmp/hermes-config.py
 COPY update-config-hashes.py /tmp/update-config-hashes.py
-ENV PATH="/opt/hermes/.venv/bin:$PATH" HOME=/sandbox
+ENV PATH="/opt/rust/cargo/bin:/opt/hermes/.venv/bin:$PATH" HOME=/sandbox \
+    CARGO_HOME=/opt/rust/cargo RUSTUP_HOME=/opt/rust/rustup
 RUN python3 /tmp/hermes-config.py && \
     chown sandbox:sandbox /sandbox/.hermes/config.yaml && \
     python3 /tmp/update-config-hashes.py && \
