@@ -1,6 +1,9 @@
 FROM localhost/nemoclaw-hermes:latest
 
 ARG GITLAB_HOST=
+ARG SIGNAL_HTTP_URL=
+ARG SIGNAL_ACCOUNT=
+ARG SIGNAL_ALLOWED_USERS=
 
 USER root
 
@@ -58,5 +61,10 @@ RUN python3 /tmp/hermes-config.py && \
     chown sandbox:sandbox /sandbox/.hermes/config.yaml && \
     python3 /tmp/update-config-hashes.py && \
     rm /tmp/hermes-config.py /tmp/update-config-hashes.py
+
+# Signal platform (set via --build-arg, persisted as ENV for os.getenv() discovery)
+ENV SIGNAL_HTTP_URL=${SIGNAL_HTTP_URL} \
+    SIGNAL_ACCOUNT=${SIGNAL_ACCOUNT} \
+    SIGNAL_ALLOWED_USERS=${SIGNAL_ALLOWED_USERS}
 
 USER sandbox

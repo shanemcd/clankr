@@ -17,6 +17,7 @@ SETTINGS = {
     "platforms": {
         "discord": {"enabled": True},
         "signal": {"enabled": True},
+        "slack": {"enabled": True},
     },
     "web": {
         "backend": "ddgs",
