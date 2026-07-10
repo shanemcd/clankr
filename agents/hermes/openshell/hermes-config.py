@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Configure Hermes settings and MCP servers at image build time.
+"""Configure Hermes settings at image build time.
 
 Modifies config.yaml directly instead of shelling out to `hermes config set`,
 which avoids issues with HOME detection. Run update-config-hashes.py after
@@ -9,27 +9,25 @@ import yaml
 
 CONFIG_PATH = "/sandbox/.hermes/config.yaml"
 
+# Hermes >=0.18 ignores model.base_url for provider: anthropic unless the host
+# looks like Anthropic/Azure/…/anthropic — inference.local fails that guard and
+# falls back to api.anthropic.com (denied by OpenShell policy). Use custom +
+# anthropic_messages so OpenShell's inference.local proxy is honored.
 SETTINGS = {
     "model": {
         "default": "claude-opus-4-6",
-        "provider": "anthropic",
+        "provider": "custom",
+        "base_url": "https://inference.local",
+        "api_key": "sk-OPENSHELL-PROXY-REWRITE",
+        "api_mode": "anthropic_messages",
     },
     "platforms": {
-        "discord": {"enabled": True},
-        "signal": {"enabled": True},
+        "discord": {"enabled": False},
+        "signal": {"enabled": False},
         "slack": {"enabled": True},
     },
     "web": {
         "backend": "ddgs",
-    },
-}
-
-MCP_SERVERS = {
-    "Atlassian": {
-        "url": "https://mcp.atlassian.com/v1/mcp",
-        "headers": {
-            "Authorization": "Bearer openshell:resolve:env:ATLASSIAN_ACCESS_TOKEN",
-        },
     },
 }
 
@@ -47,7 +45,14 @@ def main():
         cfg = yaml.safe_load(f)
 
     deep_merge(cfg, SETTINGS)
-    cfg["mcp_servers"] = MCP_SERVERS
+    # VM image is Hermes + ddgs only — no remote MCP servers.
+    cfg["mcp_servers"] = {}
+    # A leftover providers/custom_providers entry named "custom" hijacks
+    # resolve_runtime_provider() and ignores model.api_mode (Hermes falls
+    # back to chat_completions → POST /v1/chat/completions, which Vertex
+    # Claude does not route). Clear both so model.* is authoritative.
+    cfg.pop("providers", None)
+    cfg.pop("custom_providers", None)
 
     with open(CONFIG_PATH, "w") as f:
         yaml.dump(cfg, f, default_flow_style=False)
@@ -55,7 +60,8 @@ def main():
     print("Hermes config updated:")
     for k, v in SETTINGS.items():
         print(f"  {k}: {v}")
-    print(f"  mcp_servers: {list(MCP_SERVERS.keys())}")
+    print("  mcp_servers: []")
+    print("  providers/custom_providers: cleared")
 
 
 if __name__ == "__main__":
