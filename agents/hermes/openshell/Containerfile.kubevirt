@@ -76,9 +76,9 @@ RUN dnf install -y python3-pyyaml && dnf clean all && \
 # .env = sandbox:sandbox 640. Config hashes go to /etc/nemoclaw/.
 RUN mkdir -p /etc/nemoclaw /run/nemoclaw && \
     chown root:sandbox /sandbox && chmod 1775 /sandbox && \
-    chown root:root /sandbox/.hermes && chmod 755 /sandbox/.hermes && \
+    chown root:sandbox /sandbox/.hermes && chmod 1775 /sandbox/.hermes && \
     chown root:root /sandbox/.hermes/config.yaml && chmod 444 /sandbox/.hermes/config.yaml && \
-    chown root:root /sandbox/.hermes/.config-hash && chmod 444 /sandbox/.hermes/.config-hash && \
+    chown sandbox:sandbox /sandbox/.hermes/.config-hash && chmod 640 /sandbox/.hermes/.config-hash && \
     chown sandbox:sandbox /sandbox/.hermes/.env && chmod 640 /sandbox/.hermes/.env && \
     chown root:root /sandbox/.hermes/SOUL.md && chmod 444 /sandbox/.hermes/SOUL.md && \
     cp /sandbox/.hermes/.config-hash /etc/nemoclaw/hermes.config-hash && \
