@@ -1,11 +1,14 @@
+## OpenShell supervisor image (scratch + /openshell-sandbox).
+## Build with OpenShell's docker-build-image.sh supervisor, then tag locally, e.g.:
+##   podman tag openshell/supervisor:dev localhost/openshell-supervisor:kubevirt
+## ARG that feeds FROM must be declared before any FROM.
+ARG OPENSHELL_SUPERVISOR_IMAGE=localhost/openshell-supervisor:kubevirt
+
 ## Stage 1: NemoClaw Hermes built from shanemcd/NemoClaw kubevirt-sidecar
 ## (see build-nemoclaw-hermes-kubevirt.sh). Do not use nemoclaw-hermes-configured.
 FROM localhost/nemoclaw-hermes:kubevirt AS nemoclaw
 
-## Stage 2: OpenShell supervisor image (scratch + static /openshell-sandbox).
-## Build with OpenShell's docker-build-image.sh supervisor, then tag locally, e.g.:
-##   podman tag openshell/supervisor:dev localhost/openshell-supervisor:kubevirt
-ARG OPENSHELL_SUPERVISOR_IMAGE=localhost/openshell-supervisor:kubevirt
+## Stage 2: supervisor binary source for COPY --from
 FROM ${OPENSHELL_SUPERVISOR_IMAGE} AS openshell-supervisor
 
 ## Stage 3: bootc VM image
