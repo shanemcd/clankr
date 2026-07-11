@@ -14,5 +14,7 @@ git checkout "$BRANCH"
 podman build -t "$IMAGE_TAG" -f agents/hermes/Dockerfile .
 
 echo "Built $IMAGE_TAG from $(git rev-parse --short HEAD) ($BRANCH)"
-echo "Next: copy openshell-sandbox (OpenShell kubevirt-sidecar) into agents/hermes/openshell/"
-echo "      then: podman build -f Containerfile.kubevirt -t localhost/hermes-sandbox-kubevirt:latest ."
+echo "Next: build an OpenShell supervisor image (static /openshell-sandbox), e.g.:"
+echo "        (cd \$OPENSHELL_SRC && tasks/scripts/docker-build-image.sh supervisor)"
+echo "        podman tag openshell/supervisor:<tag> localhost/openshell-supervisor:kubevirt"
+echo "      then: podman build -f Containerfile.kubevirt -t localhost/hermes-sandbox-bootc:latest ."

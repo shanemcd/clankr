@@ -5,3 +5,7 @@ glab-config.yml
 jirahhh-config.yaml
 extra-ca-certs.pem
 kubeconfig
+
+# Supervisor comes from an OpenShell supervisor *image* via COPY --from
+# (see Containerfile.kubevirt). Do not stage a raw binary here.
+openshell-sandbox

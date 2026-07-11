@@ -378,7 +378,7 @@ CRDs regenerated with `make fix-go-generate` (conversion webhook via `sort-crd-v
 
 ### `shanemcd/clankr` (`main`)
 
-**`Containerfile.kubevirt`:** `FROM localhost/nemoclaw-hermes:kubevirt` (built via `build-nemoclaw-hermes-kubevirt.sh`); COPY OpenShell `openshell-sandbox`; Hermes + **ddgs only**; Slack-only overlay; no rust/CLIs/patches.
+**`Containerfile.kubevirt`:** `FROM localhost/nemoclaw-hermes:kubevirt` (built via `build-nemoclaw-hermes-kubevirt.sh`); `COPY --from` an OpenShell **supervisor image** (`/openshell-sandbox`); Hermes + **ddgs only**; Slack-only overlay; no rust/CLIs/patches / no checked-in supervisor binary.
 **Slack-focused config:** `hermes-config.py`, `hermes.env` / `.example`, `policy.yaml` / `.example`, `SOUL.md`, `PROVIDERS.md`.
 
 ## CRC deployment state

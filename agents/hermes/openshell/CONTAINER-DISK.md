@@ -117,21 +117,31 @@ Build from [`shanemcd/NemoClaw` `kubevirt-sidecar`](https://github.com/shanemcd/
 # → localhost/nemoclaw-hermes:kubevirt
 ```
 
-Also copy a release `openshell-sandbox` binary built from [`shanemcd/OpenShell` `kubevirt-sidecar`](https://github.com/shanemcd/OpenShell/tree/kubevirt-sidecar) into this directory before the bootc build.
+Build an OpenShell **supervisor image** (scratch + static `/openshell-sandbox`) from [`shanemcd/OpenShell` `kubevirt-sidecar`](https://github.com/shanemcd/OpenShell/tree/kubevirt-sidecar) — do **not** copy a raw binary into this directory:
+
+```bash
+# From an OpenShell checkout on kubevirt-sidecar:
+tasks/scripts/docker-build-image.sh supervisor
+podman tag openshell/supervisor:dev localhost/openshell-supervisor:kubevirt
+# (tag name may vary; pass whatever you built via --build-arg below)
+```
 
 ### The Containerfile
 
 `Containerfile.kubevirt` multi-stage:
 
 1. `FROM localhost/nemoclaw-hermes:kubevirt AS nemoclaw`
-2. `FROM quay.io/fedora/fedora-bootc:44` — COPY supervisor + Hermes/NemoClaw bits, install **ddgs** only, Slack-only config overlay, NemoClaw posture.
+2. `FROM ${OPENSHELL_SUPERVISOR_IMAGE}` (default `localhost/openshell-supervisor:kubevirt`) — only used as a `COPY --from` source
+3. `FROM quay.io/fedora/fedora-bootc:44` — `COPY --from=openshell-supervisor /openshell-sandbox`, Hermes/NemoClaw bits, **ddgs** only, Slack-only config overlay, NemoClaw posture
 
-No rustup, no gcc/clang/cmake, no gh/glab/gws/oc/jirahhh, no in-image sed/python patches.
+No rustup, no gcc/clang/cmake, no gh/glab/gws/oc/jirahhh, no in-image sed/python patches, no checked-in supervisor binary.
 
 ### Building the container image
 
 ```bash
-podman build -f Containerfile.kubevirt -t localhost/hermes-sandbox-kubevirt:latest .
+podman build -f Containerfile.kubevirt \
+  --build-arg OPENSHELL_SUPERVISOR_IMAGE=localhost/openshell-supervisor:kubevirt \
+  -t localhost/hermes-sandbox-bootc:latest .
 ```
 
 This is fast (~2 min with cache) and uses standard container layer caching.
@@ -161,7 +171,7 @@ Push the bootc image to the CRC internal registry, then run `bootc-image-builder
 ```bash
 # Push bootc image to CRC registry
 REGISTRY=default-route-openshift-image-registry.apps-crc.testing
-podman tag localhost/hermes-sandbox-kubevirt:latest "$REGISTRY/openshell-sandboxes/hermes-sandbox-bootc:latest"
+podman tag localhost/hermes-sandbox-bootc:latest "$REGISTRY/openshell-sandboxes/hermes-sandbox-bootc:latest"
 podman push --tls-verify=false "$REGISTRY/openshell-sandboxes/hermes-sandbox-bootc:latest"
 
 # Grant pull permissions
