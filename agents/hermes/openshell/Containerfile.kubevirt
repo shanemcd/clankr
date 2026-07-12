@@ -27,14 +27,22 @@ RUN groupadd -g 10001 sandbox || true && \
     useradd -u 10002 -g 10002 -s /usr/sbin/nologin gateway || true && \
     usermod -aG sandbox gateway
 
-# ── SSH and cloud-init (with NoCloud datasource for KubeVirt) ─────────
-RUN dnf install -y openssh-server openssh-clients cloud-init cloud-utils-growpart && \
+# ── SSH + qemu-guest-agent (day-2 root via KubeVirt accessCredentials) ─
+# Metadata arrives via virtio disks, not cloud-init. Guest agent is required
+# for virtctl credentials add-ssh-key / dynamic authorized_keys for root.
+RUN dnf install -y openssh-server openssh-clients cloud-utils-growpart \
+      qemu-guest-agent && \
     ssh-keygen -A && \
-    systemctl enable sshd cloud-init-local cloud-init-main cloud-config cloud-final && \
-    printf '[datasource_list]\ndatasource_list: [NoCloud, None]\n' \
-      > /etc/cloud/cloud.cfg.d/90_dpkg.cfg && \
-    printf 'datasource:\n  NoCloud:\n    fs_label: cidata\n' \
-      > /etc/cloud/cloud.cfg.d/99_nocloud.cfg
+    echo 'sandbox:sandbox' | chpasswd && \
+    printf '%s\n' \
+      'PasswordAuthentication yes' \
+      'PermitRootLogin prohibit-password' \
+      'PubkeyAuthentication yes' \
+      > /etc/ssh/sshd_config.d/90-sandbox.conf && \
+    systemctl enable sshd qemu-guest-agent && \
+    systemctl mask cloud-init-local.service cloud-init-main.service \
+      cloud-config.service cloud-final.service 2>/dev/null || true && \
+    (command -v setsebool >/dev/null && setsebool -P virt_qemu_ga_manage_ssh on || true)
 
 # ── Core system tools (Hermes runtime only — no rust / build toolchain) ─
 RUN dnf install -y \
@@ -92,3 +100,17 @@ RUN mkdir -p /etc/nemoclaw /run/nemoclaw && \
     chown root:root /sandbox/.hermes/SOUL.md && chmod 444 /sandbox/.hermes/SOUL.md && \
     cp /sandbox/.hermes/.config-hash /etc/nemoclaw/hermes.config-hash && \
     chown root:root /etc/nemoclaw/hermes.config-hash && chmod 444 /etc/nemoclaw/hermes.config-hash
+
+# ── Guest bootstrap (image-owned; mounts virtio-sandboxmeta + volumes.json disks) ─
+RUN mkdir -p /usr/local/lib/openshell /etc/sandbox /etc/sysctl.d
+COPY prepare-sandbox-volumes.sh /usr/local/lib/openshell/prepare-sandbox-volumes.sh
+COPY openshell-sandbox-prep-env.sh /usr/local/lib/openshell/openshell-sandbox-prep-env.sh
+COPY openshell-sandbox-run.sh /usr/local/lib/openshell/openshell-sandbox-run.sh
+COPY sandbox-volumes.service /etc/systemd/system/sandbox-volumes.service
+COPY openshell-sandbox.service /etc/systemd/system/openshell-sandbox.service
+COPY 99-openshell-quiet-console.conf /etc/sysctl.d/99-openshell-quiet-console.conf
+RUN chmod 755 /usr/local/lib/openshell/prepare-sandbox-volumes.sh \
+      /usr/local/lib/openshell/openshell-sandbox-prep-env.sh \
+      /usr/local/lib/openshell/openshell-sandbox-run.sh && \
+    systemctl enable sandbox-volumes.service openshell-sandbox.service
+# /etc/sandbox/{env,volumes.json} come from the sandboxmeta virtio disk at boot.
