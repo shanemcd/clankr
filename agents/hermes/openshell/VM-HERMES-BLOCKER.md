@@ -1,7 +1,5 @@
 # Moved
 
-This handoff doc now lives in the dedicated tracking repo:
+Handoff notes: [`shanemcd/openshell-kubevirt`](https://github.com/shanemcd/openshell-kubevirt) → [`TRACKING.md`](https://github.com/shanemcd/openshell-kubevirt/blob/main/TRACKING.md)
 
-**[`shanemcd/openshell-kubevirt`](https://github.com/shanemcd/openshell-kubevirt)** → [`VM-HERMES-BLOCKER.md`](https://github.com/shanemcd/openshell-kubevirt/blob/main/VM-HERMES-BLOCKER.md)
-
-Local clone: `/home/shanemcd/github/shanemcd/openshell-kubevirt`
+KubeVirt bootc sources: [`hermes/`](https://github.com/shanemcd/openshell-kubevirt/tree/main/hermes)
