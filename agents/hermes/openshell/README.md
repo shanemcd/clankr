@@ -119,12 +119,17 @@ openshell sandbox create \
   --provider atlassian \
   --provider slack \
   --env "CRC_CLUSTER_AUTH=$(oc whoami -t | base64 -w0)" \
+  --env "SIGNAL_HTTP_URL=http://signal-cli.default.svc.cluster.local:8080" \
+  --env "SIGNAL_ACCOUNT=+1XXXXXXXXXX" \
+  --env "SIGNAL_ALLOWED_USERS=+1XXXXXXXXXX" \
   --policy path/to/policy.yaml \
   --no-tty \
   -- /usr/local/bin/nemoclaw-start
 ```
 
 Add `--provider gitlab` or other providers as needed. Only providers listed at creation time have their credentials available for proxy rewriting.
+
+Signal is **not** a provider — pass `SIGNAL_*` as literal `--env` values (see above). Deploy in-cluster signal-cli first ([`shanemcd/openshell-kubevirt` `signal/`](https://github.com/shanemcd/openshell-kubevirt/tree/main/signal)); policy must allow `signal-cli.default.svc.cluster.local:8080`. Ensure `platforms.signal.enabled` is true in the image (`hermes-config.py`).
 
 Note: `--env` values are literal (not placeholders). Use them for non-secret config like Signal URLs or base64-encoded tokens that NemoClaw's secret detector would block in raw form.
 

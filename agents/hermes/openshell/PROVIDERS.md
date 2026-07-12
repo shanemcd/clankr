@@ -69,7 +69,7 @@ Re-run after gateway reinstalls. ADC token refresh is handled by the gateway onc
 
 - **Slack**: enabled (primary contact channel)
 - **Discord**: disabled in image config; rotating `DISCORD_BOT_TOKEN` on the in-cluster gateway is separate from VM wiring
-- **Signal**: deferred — `host.containers.internal` is blocked by OpenShell SSRF policy; needs a routable in-cluster signal-cli endpoint
+- **Signal**: enabled when `SIGNAL_*` literals are passed at create time; needs in-cluster signal-cli ([openshell-kubevirt `signal/`](https://github.com/shanemcd/openshell-kubevirt/tree/main/signal)) — do not use `host.containers.internal` (OpenShell SSRF)
 
 ## Creating Providers
 
@@ -161,9 +161,28 @@ openshell provider create --name slack --type generic \
 
 ### Signal
 
-Signal config values (`SIGNAL_HTTP_URL`, `SIGNAL_ACCOUNT`, `SIGNAL_ALLOWED_USERS`) go in `hermes.env`, not a provider. The Signal adapter reads them via `os.getenv()` before dotenv loads. Provider placeholders won't work because Hermes needs literal values to discover and connect to signal-cli.
+Signal config values (`SIGNAL_HTTP_URL`, `SIGNAL_ACCOUNT`, `SIGNAL_ALLOWED_USERS`) go in `hermes.env` / `openshell sandbox create --env`, **not** a provider. The Signal adapter reads them via `os.getenv()` before dotenv loads. Provider placeholders won't work because Hermes needs literal values to discover and connect to signal-cli.
 
-signal-cli runs as a separate container on the host:
+**CRC / KubeVirt:** run signal-cli in-cluster (not on the host):
+
+```bash
+# From shanemcd/openshell-kubevirt
+export KUBECONFIG=~/.crc/machines/crc/kubeconfig
+./signal/link.sh HermesCRC
+```
+
+Then pass:
+
+```bash
+--env "SIGNAL_HTTP_URL=http://signal-cli.default.svc.cluster.local:8080" \
+--env "SIGNAL_ACCOUNT=+1XXXXXXXXXX" \
+--env "SIGNAL_ALLOWED_USERS=+1XXXXXXXXXX"
+```
+
+Allow that Service in sandbox policy (`signal-cli.default.svc.cluster.local:8080`). See [`openshell-kubevirt/signal/README.md`](https://github.com/shanemcd/openshell-kubevirt/blob/main/signal/README.md).
+
+**Host podman (legacy, not for OpenShell VM sandboxes):**
+
 ```bash
 podman run -d --name signal-cli \
   -p 8081:3000 \
@@ -173,7 +192,7 @@ podman run -d --name signal-cli \
   daemon --http 0.0.0.0:3000
 ```
 
-Link via `signal-cli-link` script at `~/.local/bin/signal-cli-link`.
+Link via `signal-cli-link` at `~/.local/bin/signal-cli-link`. `host.containers.internal` is blocked by OpenShell SSRF — use the in-cluster Service instead for Hermes on CRC.
 
 ## Hermes Configuration
 
@@ -196,7 +215,7 @@ SETTINGS = {
     },
     "platforms": {
         "discord": {"enabled": False},
-        "signal": {"enabled": False},
+        "signal": {"enabled": True},
         "slack": {"enabled": True},
     },
     "web": {"backend": "ddgs"},
@@ -233,6 +252,9 @@ GITHUB_SHANEMCD_READONLY_TOKEN=openshell:resolve:env:GITHUB_READONLY_TOKEN
 ANTHROPIC_API_KEY=sk-OPENSHELL-PROXY-REWRITE
 ANTHROPIC_BASE_URL=https://inference.local
 SLACK_ALLOWED_USERS=your-slack-member-id
+SIGNAL_HTTP_URL=http://signal-cli.default.svc.cluster.local:8080
+SIGNAL_ACCOUNT=+1XXXXXXXXXX
+SIGNAL_ALLOWED_USERS=+1XXXXXXXXXX
 PATH=/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ```
 
